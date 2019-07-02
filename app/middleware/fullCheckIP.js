@@ -3,8 +3,6 @@
 const assert = require('assert');
 
 module.exports = (options, app) => {
-    const logger = app.coreLogger;
-
     const {
         whiteOnly,
         redisName,
@@ -16,11 +14,14 @@ module.exports = (options, app) => {
 
     const redis = redisName ? app.redis.get(redisName) : app.redis;
     assert((redis !== undefined && redis !== null), "Please configure redis");
+    const typeField = whiteOnly ? 'w' : 'b';
+    const prefix = `${redisPrefix}:${typeField}`;
+
     // 判断 ip 是否在 IP 中
     const checkIP = async (ip) => {
-        const key = `${redisPrefix}:${ip}`;
+        const key = `${prefix}:${ip}`;
         const isExist = await redis.get(key);
-        return isExist;
+        return isExist !== null;
     }
 
     const output = async (ctx) => {
@@ -38,7 +39,7 @@ module.exports = (options, app) => {
             return;
         }
 
-        const isExist = checkIP(ctx.ip);
+        const isExist = await checkIP(ctx.ip);
         // 白名单
         if (whiteOnly) {
             if (isExist) {

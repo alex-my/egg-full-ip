@@ -3,7 +3,9 @@
 - 插件会对`IP`进行判断，不符合判断的请求会优先跳转到`redirectUrl`指向的地址，未设置`redirectUrl`，则返回响应`code`, `message`
 - 插件允许开启白名单或者黑名单，只能开启其中一个
 - 不在白名单或者在黑名单中的都无法通过判断
-- 使用`ctx.addIPs(ips: array<string>)`添加`IP`名单，参数是字符串数组
+- 使用`ctx.addIPs(ips: array<string>)`批量添加`IP`名单，参数是字符串数组
+- 使用`ctx.addIP(ip: string, expire: number)`添加单个`IP`，`expire`单位为秒，不填则使用配置中的`redisTTL`
+- 使用`ctx.addIPsExpire(ips: array<string, number>)`批量添加`IP`名单，每个`IP`都单独设置`expire`
 - 使用`ctx.delIP(ip: string)`移除`IP`名单
 - 插件使用`redis`来存储数据，因此需要安装`egg-redis`
 
@@ -28,7 +30,7 @@ $ npm install egg-full-ip egg-redis --save
     whiteOnly: false,
     // 当使用内置的判断黑白名单时，需要配置 redis
     redisName: null,
-    // redis 键前缀
+    // redis 键前缀，根据 whiteOnly 会在前缀尾部自行添加 ':w' 和 ':b'
     redisPrefix: 'full:ip',
     // redis IP 缓存时间，单位: 秒， -1 表示永久
     redisTTL: -1,
@@ -52,7 +54,7 @@ $ npm install egg-full-ip egg-redis --save
         port: 6379,
         host: '127.0.0.1',
         password: '123456',
-        db: 0,
+        db: 1, // 单独使用一个数据库，方便观察，默认 0
       },
     };
     ```
@@ -67,7 +69,7 @@ $ npm install egg-full-ip egg-redis --save
           port: 6379,
           host: '127.0.0.1',
           password: '123456',
-          db: 0,
+          db: 1, // 单独使用一个数据库，方便观察，默认 0
         },
       },
     };
@@ -90,12 +92,29 @@ $ npm install egg-full-ip egg-redis --save
   };
   ```
 
-- 添加/移除`IP`，函数属于`context`扩展
+- 添加/移除`IP`，以下函数属于`context`扩展
 
-  - 添加`IP`: `addIPs(ips: array<string>)`
+  - 批量添加`IP`: `addIPs(ips: array<string>)`
 
     ```js
     ctx.addIPs(['192.168.1.5', '192.168.1.12']);
+    ```
+
+  - 批量添加`IP`且都单独设置`expire`: `addIPsExpire(ips: array<string, number>)`，`expire`设置为`undefined`表示为使用配置中的`redisTTL`
+
+    ```js
+    ctx.addIPsExpire([
+      ['192.168.1.5', 300],
+      ['192.168.1.12', -1],
+      ['192.168.1.33', undefined],
+    ]);
+    ```
+
+  - 单个添加`IP`: `addIP(ip: string, expire: number)`
+
+    ```js
+    ctx.addIP('192.168.1.5', 300);
+    ctx.addIP('192.168.1.12');
     ```
 
   - 移除`IP`: `delIP(ip: string)`
